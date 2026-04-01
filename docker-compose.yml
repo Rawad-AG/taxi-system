@@ -88,11 +88,15 @@ services:
       context: ./discovery-service
       dockerfile: Dockerfile
     container_name: taxi-discovery-service
-    env_file: .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
     networks:
       - system-network
     ports:
       - "8761:8080"
+    depends_on:
+      config-service:
+        condition: service_healthy
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
@@ -108,9 +112,8 @@ services:
       context: ./config-service
       dockerfile: Dockerfile
     container_name: taxi-config-service
-    env_file: .env
     environment:
-      - CONFIG_REPO_URI=https://github.com/Rawad-AG/taxi-system.git
+      - SPRING_PROFILES_ACTIVE=docker
     networks:
       - system-network
     ports:

@@ -3,8 +3,7 @@ spring:
     name: discovery-service
   cloud:
     config:
-      enabled: false
-eureka:
-  client:
-    register-with-eureka: false
-    fetch-registry: false
+      fail-fast: true
+      retry:
+        max-attempts: 6
+        initial-interval: 3000
