@@ -1,0 +1,10 @@
+CREATE DATABASE auth_db;
+CREATE DATABASE core_db;
+CREATE DATABASE location_db;
+CREATE DATABASE fazaa_db;
+CREATE DATABASE payment_db;
+CREATE DATABASE notification_db;
+CREATE DATABASE rating_db;
+CREATE DATABASE audit_db;
+CREATE DATABASE admin_db;
+CREATE DATABASE bff_db;

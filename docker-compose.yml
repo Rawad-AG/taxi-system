@@ -1,0 +1,474 @@
+services:
+  # ============================================
+  # INFRASTRUCTURE - PostgreSQL
+  # ============================================
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    container_name: db
+    env_file: .env
+    networks:
+      - system-network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # INFRASTRUCTURE - Cache
+  # ============================================
+  redis:
+    image: redis:latest
+    container_name: taxi-redis
+    env_file: .env
+    networks:
+      - system-network
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # INFRASTRUCTURE - Message Broker (RabbitMQ)
+  # ============================================
+  rabbitmq:
+    image: rabbitmq:latest
+    container_name: taxi-rabbitmq
+    env_file: .env
+    networks:
+      - system-network
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # INFRASTRUCTURE - Monitoring
+  # ============================================
+  prometheus:
+    build:
+      context: ./monitoring-service/prometheus
+      dockerfile: Dockerfile
+    container_name: taxi-prometheus
+    env_file: .env
+    networks:
+      - system-network
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: taxi-grafana
+    env_file: .env
+    networks:
+      - system-network
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  # ============================================
+  # SPRING CLOUD - Service Registry
+  # ============================================
+  discovery-service:
+    build:
+      context: ./discovery-service
+      dockerfile: Dockerfile
+    container_name: taxi-discovery-service
+    env_file: .env
+    networks:
+      - system-network
+    ports:
+      - "8761:8080"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================
+  # SPRING CLOUD - Config Server
+  # ============================================
+  config-service:
+    build:
+      context: ./config-service
+      dockerfile: Dockerfile
+    container_name: taxi-config-service
+    env_file: .env
+    networks:
+      - system-network
+    ports:
+      - "8888:8080"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================
+  # MICROSERVICES
+  # ============================================
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: taxi-auth-service
+    networks:
+      - system-network
+    ports:
+      - "8081:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=auth_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  core-service:
+    build:
+      context: ./core-service
+      dockerfile: Dockerfile
+    container_name: taxi-core-service
+    networks:
+      - system-network
+    ports:
+      - "8082:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=core_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  location-service:
+    build:
+      context: ./location-service
+      dockerfile: Dockerfile
+    container_name: taxi-location-service
+    networks:
+      - system-network
+    ports:
+      - "8083:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=location_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  fazaa-service:
+    build:
+      context: ./fazaa-service
+      dockerfile: Dockerfile
+    container_name: taxi-fazaa-service
+    networks:
+      - system-network
+    ports:
+      - "8084:8080"
+    env_file: .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=fazaa_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: taxi-payment-service
+    networks:
+      - system-network
+    ports:
+      - "8085:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=payment_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: taxi-notification-service
+    networks:
+      - system-network
+    ports:
+      - "8086:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=notification_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  rating-service:
+    build:
+      context: ./rating-service
+      dockerfile: Dockerfile
+    container_name: taxi-rating-service
+    networks:
+      - system-network
+    ports:
+      - "8087:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=rating_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  audit-service:
+    build:
+      context: ./audit-service
+      dockerfile: Dockerfile
+    container_name: taxi-audit-service
+    networks:
+      - system-network
+    ports:
+      - "8088:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=audit_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  admin-service:
+    build:
+      context: ./admin-service
+      dockerfile: Dockerfile
+    container_name: taxi-admin-service
+    networks:
+      - system-network
+    ports:
+      - "8089:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=admin_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  bff-service:
+    build:
+      context: ./bff-service
+      dockerfile: Dockerfile
+    container_name: taxi-bff-service
+    networks:
+      - system-network
+    ports:
+      - "8090:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+      - POSTGRES_DB=bff_db
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  gateway-service:
+    build:
+      context: ./gateway-service
+      dockerfile: Dockerfile
+    container_name: taxi-gateway-service
+    networks:
+      - system-network
+    ports:
+      - "8091:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  monitoring-service:
+    build:
+      context: ./monitoring-service
+      dockerfile: Dockerfile
+    container_name: taxi-monitoring-service
+    networks:
+      - system-network
+    ports:
+      - "9091:8080"
+    env_file: .env
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  system-network:
+    driver: bridge

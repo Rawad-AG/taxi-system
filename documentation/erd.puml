@@ -1,0 +1,322 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+
+package "Auth Service" {
+	entity "users" {
+		* id : uuid
+		--
+		email : string
+		phone_number: string
+		password : string 
+		enabled_via_email : boolean
+		enabled_via_phone_number : boolean
+		refresh_token_issued_at : timestamp
+		--
+		deleted_at : timestamp
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+	entity "roles" {
+		* id : uuid
+		--
+		name : string
+	}
+
+	entity "permissions" {
+		* id : uuid
+		--
+		name : string
+	}
+
+	entity "roles_permissions" {
+        * role_id : uuid 
+		* permission_id : uuid 
+		--
+		expires_at : timestamp
+		revoked : boolean
+		--
+		created_by : uuid 
+		updated_by : uuid 
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+	entity "users_roles" {
+		* user_id : uuid 
+        * role_id : uuid 
+		--
+		revoked : boolean 
+		expires_at : timestamp
+		only-one-use : boolean
+		--
+		created_by : uuid 
+		updated_by : uuid 
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+	entity "users_permissions" {
+		* user_id : uuid 
+        * permission_id : uuid 
+		--
+		revoked : boolean 
+		expires_at : timestamp
+		only-one-use : boolean
+		--
+		created_by : uuid 
+		updated_by : uuid 
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+	entity "oauth2_registered_client" {
+        * id : string
+        --
+        client_id : string
+        client_secret : string
+        authorization_grant_types : string
+        scopes : string
+        redirect_uris : string
+    }
+
+    entity "oauth2_authorization" {
+        * id : string
+        --
+        registered_client_id : string
+        principal_name : string
+        authorization_grant_type : string
+        attributes : text
+        state : string
+    }
+
+	users ||--o{ users_roles
+	roles ||--o{ users_roles
+
+	roles ||--o{ roles_permissions
+	permissions ||--o{ roles_permissions
+
+	users ||--o{ users_permissions
+	permissions ||--o{ users_permissions
+}
+
+package "Locatino Service (Cache - Redis)" {
+}
+
+package "Location Service (Persistence - PostgreSQL)" {
+    entity "driver_location_history" {
+        * id : uuid
+        --
+        driver_id : uuid
+        trip_id : uuid
+        latitude : double
+        longitude : double
+		--
+        created_at : timestamp
+    }
+}
+
+package "Core Service" {
+	enum TripStatus {
+		PENDING
+		ACCEPTED
+		ARRIVED
+		ON_TRIP
+		COMPLETED
+		CANCELLED
+	}
+
+	enum TripType {
+		TAXI
+		ITEMS_TRANSPORT
+		DELIVERY
+	}
+
+	enum TripPaymentType {
+		CASH
+		WALLET
+		PROVIDER
+		FAZAA
+	}
+
+	enum CarModeles {
+		SEDAN
+		HATCHBACK
+		CUV
+		SUV
+		PICKUP
+		MICRO
+		VAN
+		CAMPERVAN
+	}
+	
+	entity "trips" {
+		* id : uuid
+		--
+		passenger_id : uuid
+		driver_id : uuid 
+		status : enum
+		type : enum
+		payment_type : enum
+		cancellation_reason : string
+		cancelled_by : uuid
+		scheduled : timestamp
+		--
+		source_latitude : double
+        source_longitude : double
+        destination_latitude : double
+        destination_longitude : double
+		--
+        requested_at : timestamp
+        accepted_at : timestamp
+        started_at : timestamp
+        finished_at : timestamp
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+	entity "taxi_trips" {
+		* id : uuid
+		--
+		trip_id : uuid 
+		car_model_required : enum
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+	entity "recurring_trips" {
+		* id : uuid
+		--
+		trip_id : uuid 
+		from : timestamp
+		to : timestamp
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+	
+	entity "delivery_trips" {
+		* id : uuid
+		--
+		trip_id : uuid 
+		bill : double
+		receipt_image_url : string
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+	entity "items_transport_trips" {
+		* id : uuid
+		--
+		trip_id : uuid 
+		car_model_required : enum
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+	entity "items_transport_trips_items" {
+		* id : uuid
+		--
+		item : string
+		description : string
+		valuable : boolean
+		breakable : boolean
+		approximate_weight : double
+		notes : string
+		--
+		created_at : timestamp
+		updated_at : timestamp
+	}
+
+
+	trips .. TripStatus : status
+	trips .. TripType : type
+	trips .. TripPaymentType : payment_type
+	items_transport_trips .. CarModeles : car_model_required
+	taxi_trips .. CarModeles : car_model_required
+
+	trips ||--o| taxi_trips
+	trips ||--o| delivery_trips
+	trips ||--o| items_transport_trips
+	items_transport_trips ||--|{ items_transport_trips_items
+}
+
+package "Fazaa Service" {
+}
+
+package "Notification Service" {}
+
+package "Payment Service" {}
+
+package "Config Service" {}
+
+package "BFF Service" {}
+
+package "Discovery Service" {}
+
+package "Monitoring Service" {}
+
+package "Rating Service" {
+	entity "trips_ratings" {
+		* id : uuid
+		--
+		rating : double
+		trip_id : uuid
+		content : string
+		--
+		created_at : timestamp
+		updated_at : timestamp
+		created_by : uuid
+		updated_at : uuid
+	}
+	
+	entity "drivers_ratings" {
+		* id : uuid
+		--
+		rating : double
+		driver_id : uuid
+		content : string
+		--
+		created_at : timestamp
+		updated_at : timestamp
+		created_by : uuid
+		updated_at : uuid
+	}
+
+	entity "suggestions" {
+		* id : uuid
+		--
+		content : string
+		--
+		created_at : timestamp
+		updated_at : timestamp
+		created_by : uuid
+		updated_at : uuid
+	}
+	
+	entity "issues" {
+		* id : uuid
+		--
+		content : string
+		--
+		created_at : timestamp
+		updated_at : timestamp
+		created_by : uuid
+		updated_at : uuid
+	}
+}
+
+package "Admin Service" {}
+
+package "Audit Service" {}
+
+
+@enduml
