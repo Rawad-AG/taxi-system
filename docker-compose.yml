@@ -111,7 +111,6 @@ services:
     env_file: .env
     environment:
       - CONFIG_REPO_URI=https://github.com/Rawad-AG/taxi-system.git
-      - SPRING_CLOUD_CONFIG_ENABLED=false
     networks:
       - system-network
     ports:
