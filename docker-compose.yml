@@ -109,13 +109,13 @@ services:
       dockerfile: Dockerfile
     container_name: taxi-config-service
     env_file: .env
+    environment:
+      - CONFIG_REPO_URI=https://github.com/Rawad-AG/taxi-system.git
+      - SPRING_CLOUD_CONFIG_ENABLED=false
     networks:
       - system-network
     ports:
       - "8888:8080"
-    depends_on:
-      discovery-service:
-        condition: service_healthy
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
@@ -137,7 +137,6 @@ services:
       - "8081:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=auth_db
     depends_on:
       discovery-service:
@@ -166,7 +165,6 @@ services:
       - "8082:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=core_db
     depends_on:
       discovery-service:
@@ -195,7 +193,6 @@ services:
       - "8083:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=location_db
     depends_on:
       discovery-service:
@@ -226,8 +223,6 @@ services:
       - "8084:8080"
     env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=fazaa_db
     depends_on:
       discovery-service:
@@ -256,7 +251,6 @@ services:
       - "8085:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=payment_db
     depends_on:
       discovery-service:
@@ -285,7 +279,6 @@ services:
       - "8086:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=notification_db
     depends_on:
       discovery-service:
@@ -316,7 +309,6 @@ services:
       - "8087:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=rating_db
     depends_on:
       discovery-service:
@@ -345,7 +337,6 @@ services:
       - "8088:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=audit_db
     depends_on:
       discovery-service:
@@ -374,7 +365,6 @@ services:
       - "8089:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=admin_db
     depends_on:
       discovery-service:
@@ -403,7 +393,6 @@ services:
       - "8090:8080"
     env_file: .env
     environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
       - POSTGRES_DB=bff_db
     depends_on:
       discovery-service:
@@ -429,8 +418,6 @@ services:
     ports:
       - "8091:8080"
     env_file: .env
-    environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -455,8 +442,6 @@ services:
     ports:
       - "9091:8080"
     env_file: .env
-    environment:
-      - SPRING_CONFIG_IMPORT=optional:config-server:http://config-service:8888
     depends_on:
       discovery-service:
         condition: service_healthy
