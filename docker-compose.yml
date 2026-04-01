@@ -88,8 +88,10 @@ services:
       context: ./discovery-service
       dockerfile: Dockerfile
     container_name: taxi-discovery-service
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
+      - EUREKA_CLIENT_FETCH_REGISTRY=false
     networks:
       - system-network
     ports:
@@ -100,9 +102,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./discovery-service/src
 
   # ============================================
   # SPRING CLOUD - Config Server
@@ -121,9 +127,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./config-service/src
 
   # ============================================
   # MICROSERVICES
@@ -152,9 +162,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./auth-service/src
 
   core-service:
     build:
@@ -180,9 +194,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./core-service/src
 
   location-service:
     build:
@@ -210,9 +228,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./location-service/src
 
   fazaa-service:
     build:
@@ -238,9 +260,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./fazaa-service/src
 
   payment-service:
     build:
@@ -266,9 +292,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./payment-service/src
 
   notification-service:
     build:
@@ -296,9 +326,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./notification-service/src
 
   rating-service:
     build:
@@ -324,9 +358,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./rating-service/src
 
   audit-service:
     build:
@@ -352,9 +390,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./audit-service/src
 
   admin-service:
     build:
@@ -380,9 +422,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./admin-service/src
 
   bff-service:
     build:
@@ -406,9 +452,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./bff-service/src
 
   gateway-service:
     build:
@@ -430,9 +480,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./gateway-service/src
 
   monitoring-service:
     build:
@@ -452,9 +506,13 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
+    develop:
+      watch:
+        - action: rebuild
+          path: ./monitoring-service/src
 
 networks:
   system-network:
