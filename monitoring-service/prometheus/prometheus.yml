@@ -3,76 +3,76 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
-  - job_name: 'discovery-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "discovery-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['discovery-service:8761']
+      - targets: ["discovery-service:8080"]
 
-  - job_name: 'config-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "config-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['config-service:8888']
+      - targets: ["config-service:8080"]
 
-  - job_name: 'auth-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "auth-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['auth-service:8081']
+      - targets: ["auth-service:8080"]
 
-  - job_name: 'core-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "core-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['core-service:8082']
+      - targets: ["core-service:8080"]
 
-  - job_name: 'location-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "location-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['location-service:8083']
+      - targets: ["location-service:8080"]
 
-  - job_name: 'fazaa-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "fazaa-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['fazaa-service:8084']
+      - targets: ["fazaa-service:8080"]
 
-  - job_name: 'payment-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "payment-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['payment-service:8085']
+      - targets: ["payment-service:8080"]
 
-  - job_name: 'notification-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "notification-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['notification-service:8086']
+      - targets: ["notification-service:8080"]
 
-  - job_name: 'rating-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "rating-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['rating-service:8087']
+      - targets: ["rating-service:8080"]
 
-  - job_name: 'audit-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "audit-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['audit-service:8088']
+      - targets: ["audit-service:8080"]
 
-  - job_name: 'admin-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "admin-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['admin-service:8089']
+      - targets: ["admin-service:8089"]
 
-  - job_name: 'bff-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "bff-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['bff-service:8090']
+      - targets: ["bff-service:8080"]
 
-  - job_name: 'gateway-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "gateway-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['gateway-service:8091']
+      - targets: ["gateway-service:8080"]
 
-  - job_name: 'monitoring-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "monitoring-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['monitoring-service:9091']
+      - targets: ["monitoring-service:8080"]

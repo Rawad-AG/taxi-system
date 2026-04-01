@@ -6,6 +6,7 @@ services:
     build:
       context: ./db
       dockerfile: Dockerfile
+    image: rawad0/db:latest
     container_name: db
     env_file: .env
     networks:
@@ -60,6 +61,7 @@ services:
     build:
       context: ./monitoring-service/prometheus
       dockerfile: Dockerfile
+    image: rawad0/monitoring-prometheus:latest
     container_name: taxi-prometheus
     env_file: .env
     networks:
@@ -87,6 +89,7 @@ services:
     build:
       context: ./discovery-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-discovery-service:latest
     container_name: taxi-discovery-service
     env_file: .env
     environment:
@@ -117,6 +120,7 @@ services:
     build:
       context: ./config-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-config-service:latest
     container_name: taxi-config-service
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -142,6 +146,7 @@ services:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-auth-service:latest
     container_name: taxi-auth-service
     networks:
       - system-network
@@ -174,6 +179,7 @@ services:
     build:
       context: ./core-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-core-service:latest
     container_name: taxi-core-service
     networks:
       - system-network
@@ -206,6 +212,7 @@ services:
     build:
       context: ./location-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-location-service:latest
     container_name: taxi-location-service
     networks:
       - system-network
@@ -240,6 +247,7 @@ services:
     build:
       context: ./fazaa-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-fazaa-service:latest
     container_name: taxi-fazaa-service
     networks:
       - system-network
@@ -272,6 +280,7 @@ services:
     build:
       context: ./payment-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-payment-service:latest
     container_name: taxi-payment-service
     networks:
       - system-network
@@ -304,6 +313,7 @@ services:
     build:
       context: ./notification-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-notification-service:latest
     container_name: taxi-notification-service
     networks:
       - system-network
@@ -338,6 +348,7 @@ services:
     build:
       context: ./rating-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-rating-service:latest
     container_name: taxi-rating-service
     networks:
       - system-network
@@ -370,6 +381,7 @@ services:
     build:
       context: ./audit-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-audit-service:latest
     container_name: taxi-audit-service
     networks:
       - system-network
@@ -402,6 +414,7 @@ services:
     build:
       context: ./admin-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-admin-service:latest
     container_name: taxi-admin-service
     networks:
       - system-network
@@ -435,6 +448,7 @@ services:
       context: ./bff-service
       dockerfile: Dockerfile
     container_name: taxi-bff-service
+    image: rawad0/taxi-bff-service:latest
     networks:
       - system-network
     ports:
@@ -464,6 +478,7 @@ services:
     build:
       context: ./gateway-service
       dockerfile: Dockerfile
+    image: rawad0/taxi-gateway-service:latest
     container_name: taxi-gateway-service
     networks:
       - system-network
@@ -493,6 +508,7 @@ services:
       context: ./monitoring-service
       dockerfile: Dockerfile
     container_name: taxi-monitoring-service
+    image: rawad0/taxi-monitoring-service:latest
     networks:
       - system-network
     ports:

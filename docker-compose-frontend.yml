@@ -1,37 +1,15 @@
-# =============================================
-# Taxi System - Frontend Ready
-# =============================================
-# This file pulls pre-built images from Docker Hub.
-# No code building required.
-#
-# Setup:
-# 1. Replace IMAGE_PLACEHOLDER values below with your Docker Hub images
-# 2. Update .env file with your desired credentials
-# 3. Run: docker-compose -f docker-compose-frontend.yml up -d
-#
-# =============================================
-
-# Load environment variables from .env file
-env_file:
-  - .env
-
 services:
   # ============================================
   # INFRASTRUCTURE - PostgreSQL
   # ============================================
-  postgres:
-    image: postgres:17-alpine
-    container_name: taxi-postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  db:
+    image: rawad0/db:latest
+    container_name: db
+    env_file: .env
     networks:
-      - taxi-network
+      - system-network
     ports:
       - "5432:5432"
-    volumes:
-      - ./postgres-init/init.sh:/docker-entrypoint-initdb.d/init.sh
-    command: /bin/sh /docker-entrypoint-initdb.d/init.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
@@ -42,10 +20,11 @@ services:
   # INFRASTRUCTURE - Cache
   # ============================================
   redis:
-    image: redis:7-alpine
+    image: redis:latest
     container_name: taxi-redis
+    env_file: .env
     networks:
-      - taxi-network
+      - system-network
     ports:
       - "6379:6379"
     healthcheck:
@@ -55,16 +34,14 @@ services:
       retries: 5
 
   # ============================================
-  # INFRASTRUCTURE - Message Broker (RabbitMQ)
+  # INFRASTRUCTURE - Message Broker
   # ============================================
   rabbitmq:
-    image: rabbitmq:4-management-alpine
+    image: rabbitmq:latest
     container_name: taxi-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    env_file: .env
     networks:
-      - taxi-network
+      - system-network
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -78,406 +55,262 @@ services:
   # INFRASTRUCTURE - Monitoring
   # ============================================
   prometheus:
-    image: prom/prometheus:latest
+    image: rawad0/monitoring-prometheus:latest
     container_name: taxi-prometheus
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    env_file: .env
     networks:
-      - taxi-network
+      - system-network
     ports:
       - "9090:9090"
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
 
   grafana:
     image: grafana/grafana:latest
     container_name: taxi-grafana
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: false
+    env_file: .env
     networks:
-      - taxi-network
+      - system-network
     ports:
       - "3000:3000"
     depends_on:
       - prometheus
 
   # ============================================
-  # SPRING CLOUD - Service Registry
+  # SPRING CLOUD - Discovery & Config
   # ============================================
   discovery-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-discovery-service:latest
+    image: rawad0/taxi-discovery-service:latest
     container_name: taxi-discovery-service
-    networks:
-      - taxi-network
-    ports:
-      - "8761:8761"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8761/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # ============================================
-  # SPRING CLOUD - Config Server
-  # ============================================
-  config-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-config-service:latest
-    container_name: taxi-config-service
+      - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
+      - EUREKA_CLIENT_FETCH_REGISTRY=false
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8888:8888"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-    volumes:
-      - ./config-repo:/config-repo
+      - "8761:8080"
     depends_on:
-      discovery-service:
+      config-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1"]
-      interval: 30s
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  config-service:
+    image: rawad0/taxi-config-service:latest
+    container_name: taxi-config-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - system-network
+    ports:
+      - "8888:8080"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
       timeout: 10s
       retries: 5
 
   # ============================================
-  # MICROSERVICES
+  # MICROSERVICES (Pulling from Docker Hub)
   # ============================================
   auth-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-auth-service:latest
+    image: rawad0/taxi-auth-service:latest
     container_name: taxi-auth-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8081:8081"
+      - "8081:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=auth_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   core-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-core-service:latest
+    image: rawad0/taxi-core-service:latest
     container_name: taxi-core-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8082:8082"
+      - "8082:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=core_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   location-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-location-service:latest
+    image: rawad0/taxi-location-service:latest
     container_name: taxi-location-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8083:8083"
+      - "8083:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=location_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   fazaa-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-fazaa-service:latest
+    image: rawad0/taxi-fazaa-service:latest
     container_name: taxi-fazaa-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8084:8084"
+      - "8084:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=fazaa_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   payment-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-payment-service:latest
+    image: rawad0/taxi-payment-service:latest
     container_name: taxi-payment-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8085:8085"
+      - "8085:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=payment_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8085/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   notification-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-notification-service:latest
+    image: rawad0/taxi-notification-service:latest
     container_name: taxi-notification-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8086:8086"
+      - "8086:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=notification_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8086/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   rating-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-rating-service:latest
+    image: rawad0/taxi-rating-service:latest
     container_name: taxi-rating-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8087:8087"
+      - "8087:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=rating_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8087/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   audit-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-audit-service:latest
+    image: rawad0/taxi-audit-service:latest
     container_name: taxi-audit-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8088:8088"
+      - "8088:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=audit_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8088/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   admin-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-admin-service:latest
+    image: rawad0/taxi-admin-service:latest
     container_name: taxi-admin-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8089:8089"
+      - "8089:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=admin_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-      postgres:
+      db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8089/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   bff-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-bff-service:latest
+    image: rawad0/taxi-bff-service:latest
     container_name: taxi-bff-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8090:8090"
+      - "8090:8080"
+    env_file: .env
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=bff_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_USER=${RABBITMQ_USER}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -485,25 +318,15 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8090/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   gateway-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-gateway-service:latest
+    image: rawad0/taxi-gateway-service:latest
     container_name: taxi-gateway-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "8091:8091"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - AUTH_SERVICE_URL=http://auth-service:8081
+      - "8091:8080"
+    env_file: .env
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -511,33 +334,21 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8091/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   monitoring-service:
-    image: YOUR_DOCKERHUB_USERNAME/taxi-monitoring-service:latest
+    image: rawad0/taxi-monitoring-service:latest
     container_name: taxi-monitoring-service
     networks:
-      - taxi-network
+      - system-network
     ports:
-      - "9091:9091"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=config-server:http://config-service:8888
+      - "9091:8080"
+    env_file: .env
     depends_on:
       discovery-service:
         condition: service_healthy
       config-service:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9091/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
 networks:
-  taxi-network:
+  system-network:
     driver: bridge

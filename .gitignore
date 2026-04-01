@@ -32,3 +32,4 @@
 .settings/
 MODEL.md
 workspace.code-workspace
+docker-push.sh
